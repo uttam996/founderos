@@ -1,19 +1,19 @@
-import { BaseAgent } from "@/ai/agents/base/agent.ts";
+import type { AgentDeps, AgentNode } from "@/ai/agents/base/types.ts";
+import { agentLog, agentThink, agentToolCall } from "@/ai/agents/base/helpers.ts";
 import type { GraphStateType, GraphUpdate } from "@/ai/graph/state.ts";
 import { ResearchOutputSchema, type ResearchOutput } from "@/ai/schemas.ts";
 import { marketSearchTool, competitorSearchTool, webSearchTool, ideaLabel } from "@/ai/tools/index.ts";
 
 /**
  * Research agent: market sizing, competitor analysis, opportunity discovery.
- * Uses the research tools to gather context (real or synthesized) before
- * producing a validated structured output.
  */
-export class ResearchAgent extends BaseAgent {
-  readonly name = "research";
+export function createResearchAgent(deps: AgentDeps): AgentNode {
+  const { llm } = deps;
+  const name = "research";
 
-  async run(state: GraphStateType): Promise<GraphUpdate> {
+  async function run(state: GraphStateType): Promise<GraphUpdate> {
     const label = ideaLabel(state.idea);
-    await this.toolCall("web_search + market_search + competitor_search");
+    await agentToolCall(name, "web_search + market_search + competitor_search");
 
     const [web, market, competitors] = await Promise.all([
       webSearchTool.invoke({ query: state.idea }),
@@ -21,9 +21,9 @@ export class ResearchAgent extends BaseAgent {
       competitorSearchTool.invoke({ query: state.idea }),
     ]);
 
-    await this.log(`Found ${competitors.competitors.length} competitors; estimating opportunities.`);
+    await agentLog(name, `Found ${competitors.competitors.length} competitors; estimating opportunities.`);
 
-    const output = await this.think<ResearchOutput>({
+    const output = await agentThink<ResearchOutput>(llm, {
       schema: ResearchOutputSchema,
       schemaName: "ResearchOutput",
       temperature: 0.4,
@@ -58,11 +58,13 @@ export class ResearchAgent extends BaseAgent {
       }),
     });
 
-    await this.log("Market, competitor and opportunity analysis complete.");
+    await agentLog(name, "Market, competitor and opportunity analysis complete.");
     return {
       market: output.market,
       competitors: output.competitors,
       opportunities: output.opportunities,
     };
   }
+
+  return { name, run };
 }

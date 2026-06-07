@@ -1,20 +1,19 @@
-import { BaseAgent } from "@/ai/agents/base/agent.ts";
+import type { AgentDeps, AgentNode } from "@/ai/agents/base/types.ts";
+import { agentLog, agentThink } from "@/ai/agents/base/helpers.ts";
 import type { GraphStateType, GraphUpdate } from "@/ai/graph/state.ts";
 import { ProductOutputSchema, type ProductOutput } from "@/ai/schemas.ts";
 import { ideaLabel } from "@/ai/tools/index.ts";
 
-/**
- * Product Manager agent: MVP scoping, feature prioritization (MoSCoW), and a
- * phased roadmap.
- */
-export class ProductManagerAgent extends BaseAgent {
-  readonly name = "product-manager";
+/** Product Manager: MVP scoping, MoSCoW prioritization, phased roadmap. */
+export function createProductManagerAgent(deps: AgentDeps): AgentNode {
+  const { llm } = deps;
+  const name = "product-manager";
 
-  async run(state: GraphStateType): Promise<GraphUpdate> {
+  async function run(state: GraphStateType): Promise<GraphUpdate> {
     const label = ideaLabel(state.idea);
-    await this.log("Scoping the MVP and prioritizing features.");
+    await agentLog(name, "Scoping the MVP and prioritizing features.");
 
-    const product = await this.think<ProductOutput>({
+    const product = await agentThink<ProductOutput>(llm, {
       schema: ProductOutputSchema,
       schemaName: "ProductOutput",
       temperature: 0.4,
@@ -44,7 +43,9 @@ export class ProductManagerAgent extends BaseAgent {
       }),
     });
 
-    await this.log(`Defined ${product.mvpFeatures.length} MVP features across ${product.roadmap.length} phases.`);
+    await agentLog(name, `Defined ${product.mvpFeatures.length} MVP features across ${product.roadmap.length} phases.`);
     return { product };
   }
+
+  return { name, run };
 }

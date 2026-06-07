@@ -1,25 +1,24 @@
-import { BaseAgent } from "@/ai/agents/base/agent.ts";
+import type { AgentDeps, AgentNode } from "@/ai/agents/base/types.ts";
+import { agentLog, agentThink, agentToolCall } from "@/ai/agents/base/helpers.ts";
 import type { GraphStateType, GraphUpdate } from "@/ai/graph/state.ts";
 import { MarketingOutputSchema, type MarketingOutput } from "@/ai/schemas.ts";
 import { contentGeneratorTool, launchStrategyGeneratorTool, ideaLabel } from "@/ai/tools/index.ts";
 
-/**
- * Marketing agent: go-to-market strategy, customer acquisition channels, launch
- * campaigns and content ideas.
- */
-export class MarketingAgent extends BaseAgent {
-  readonly name = "marketing";
+/** Marketing: GTM strategy, channels, campaigns, launch timeline. */
+export function createMarketingAgent(deps: AgentDeps): AgentNode {
+  const { llm } = deps;
+  const name = "marketing";
 
-  async run(state: GraphStateType): Promise<GraphUpdate> {
+  async function run(state: GraphStateType): Promise<GraphUpdate> {
     const label = ideaLabel(state.idea);
-    await this.toolCall("content_generator + launch_strategy_generator");
+    await agentToolCall(name, "content_generator + launch_strategy_generator");
 
     const [content, strategy] = await Promise.all([
       contentGeneratorTool.invoke({ idea: state.idea, count: 5 }),
       launchStrategyGeneratorTool.invoke({ idea: state.idea }),
     ]);
 
-    const output = await this.think<MarketingOutput>({
+    const output = await agentThink<MarketingOutput>(llm, {
       schema: MarketingOutputSchema,
       schemaName: "MarketingOutput",
       temperature: 0.5,
@@ -47,7 +46,9 @@ export class MarketingAgent extends BaseAgent {
       }),
     });
 
-    await this.log("Go-to-market and launch plan complete.");
+    await agentLog(name, "Go-to-market and launch plan complete.");
     return { launchPlan: output.launchPlan };
   }
+
+  return { name, run };
 }

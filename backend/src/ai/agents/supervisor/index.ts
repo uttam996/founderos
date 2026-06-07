@@ -1,4 +1,5 @@
-import { BaseAgent } from "@/ai/agents/base/agent.ts";
+import type { AgentDeps, SupervisorNode } from "@/ai/agents/base/types.ts";
+import { agentLog, agentThink } from "@/ai/agents/base/helpers.ts";
 import type { GraphStateType, GraphUpdate } from "@/ai/graph/state.ts";
 import {
   SupervisorPlanSchema,
@@ -11,14 +12,15 @@ import { ideaLabel } from "@/ai/tools/index.ts";
  * Supervisor: understands the goal, sets focus areas for the specialists, and
  * later reviews all outputs to produce the final consolidated plan.
  */
-export class SupervisorAgent extends BaseAgent {
-  readonly name = "supervisor";
+export function createSupervisorAgent(deps: AgentDeps): SupervisorNode {
+  const { llm } = deps;
+  const name = "supervisor";
 
-  async run(state: GraphStateType): Promise<GraphUpdate> {
-    await this.log(`Analyzing the idea: "${state.idea}"`);
+  async function run(state: GraphStateType): Promise<GraphUpdate> {
+    await agentLog(name, `Analyzing the idea: "${state.idea}"`);
     const label = ideaLabel(state.idea);
 
-    const plan = await this.think<SupervisorPlan>({
+    const plan = await agentThink<SupervisorPlan>(llm, {
       schema: SupervisorPlanSchema,
       schemaName: "SupervisorPlan",
       temperature: 0.3,
@@ -42,16 +44,15 @@ export class SupervisorAgent extends BaseAgent {
       }),
     });
 
-    await this.log(`Goal set. Dispatching specialist agents in parallel.`);
+    await agentLog(name, "Goal set. Dispatching specialist agents in parallel.");
     return { plan };
   }
 
-  /** Join node: consolidates specialist outputs into a final review + summary. */
-  async review(state: GraphStateType): Promise<GraphUpdate> {
-    await this.log("Reviewing all specialist outputs and resolving conflicts.");
+  async function review(state: GraphStateType): Promise<GraphUpdate> {
+    await agentLog(name, "Reviewing all specialist outputs and resolving conflicts.");
     const label = ideaLabel(state.idea);
 
-    const review = await this.think({
+    const reviewResult = await agentThink(llm, {
       schema: FinalReviewSchema,
       schemaName: "FinalReview",
       temperature: 0.3,
@@ -73,17 +74,19 @@ export class SupervisorAgent extends BaseAgent {
       }),
     });
 
-    const summary = await this.llm.generateText({
+    const summary = await llm.generateText({
       temperature: 0.4,
       system: "You are the Supervisor writing a 3-4 sentence executive summary of the startup plan.",
-      prompt: `Idea: ${state.idea}\nGoal: ${state.plan?.goal ?? ""}\nReview: ${review.summary}`,
+      prompt: `Idea: ${state.idea}\nGoal: ${state.plan?.goal ?? ""}\nReview: ${reviewResult.summary}`,
       mock: () =>
         `${label} is a focused bet on an AI-native solution for an underserved segment. Research confirms a sizeable, growing market with beatable incumbents. The plan defines a lean MVP, a payback-friendly pricing model, a pragmatic architecture, and a four-week launch motion. Execute the next steps to validate demand and reach early revenue.`,
     });
 
-    await this.log("Final startup plan assembled.");
-    return { review, summary };
+    await agentLog(name, "Final startup plan assembled.");
+    return { review: reviewResult, summary };
   }
+
+  return { name, run, review };
 }
 
 function buildReviewPrompt(state: GraphStateType): string {

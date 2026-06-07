@@ -1,4 +1,5 @@
-import { BaseAgent } from "@/ai/agents/base/agent.ts";
+import type { AgentDeps, AgentNode } from "@/ai/agents/base/types.ts";
+import { agentLog, agentThink, agentToolCall } from "@/ai/agents/base/helpers.ts";
 import type { GraphStateType, GraphUpdate } from "@/ai/graph/state.ts";
 import { EngineerOutputSchema, type EngineerOutput } from "@/ai/schemas.ts";
 import {
@@ -8,16 +9,14 @@ import {
   ideaLabel,
 } from "@/ai/tools/index.ts";
 
-/**
- * Engineer agent: technical architecture, data model, API design, and automatic
- * generation of development tasks (which are persisted to the tasks table).
- */
-export class EngineerAgent extends BaseAgent {
-  readonly name = "engineer";
+/** Engineer: architecture, data model, APIs, dev task backlog. */
+export function createEngineerAgent(deps: AgentDeps): AgentNode {
+  const { llm } = deps;
+  const name = "engineer";
 
-  async run(state: GraphStateType): Promise<GraphUpdate> {
+  async function run(state: GraphStateType): Promise<GraphUpdate> {
     const label = ideaLabel(state.idea);
-    await this.toolCall("architecture_generator + database_schema_generator + api_specification_generator");
+    await agentToolCall(name, "architecture_generator + database_schema_generator + api_specification_generator");
 
     const [arch, db, apis] = await Promise.all([
       architectureGeneratorTool.invoke({ idea: state.idea }),
@@ -25,7 +24,7 @@ export class EngineerAgent extends BaseAgent {
       apiSpecGeneratorTool.invoke({ idea: state.idea }),
     ]);
 
-    const output = await this.think<EngineerOutput>({
+    const output = await agentThink<EngineerOutput>(llm, {
       schema: EngineerOutputSchema,
       schemaName: "EngineerOutput",
       temperature: 0.3,
@@ -58,7 +57,9 @@ export class EngineerAgent extends BaseAgent {
       }),
     });
 
-    await this.log(`Architecture designed; generated ${output.tasks.length} development tasks.`);
+    await agentLog(name, `Architecture designed; generated ${output.tasks.length} development tasks.`);
     return { architecture: output.architecture, tasks: output.tasks };
   }
+
+  return { name, run };
 }

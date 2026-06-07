@@ -1,37 +1,33 @@
 import type { LlmProvider } from "@/ai/llm/index.ts";
-import { SupervisorAgent } from "@/ai/agents/supervisor/index.ts";
-import { ResearchAgent } from "@/ai/agents/research/index.ts";
-import { ProductManagerAgent } from "@/ai/agents/product-manager/index.ts";
-import { FinanceAgent } from "@/ai/agents/finance/index.ts";
-import { EngineerAgent } from "@/ai/agents/engineer/index.ts";
-import { MarketingAgent } from "@/ai/agents/marketing/index.ts";
+import type { AgentDeps, AgentTeam } from "@/ai/agents/base/types.ts";
+import { createSupervisorAgent } from "@/ai/agents/supervisor/index.ts";
+import { createResearchAgent } from "@/ai/agents/research/index.ts";
+import { createProductManagerAgent } from "@/ai/agents/product-manager/index.ts";
+import { createFinanceAgent } from "@/ai/agents/finance/index.ts";
+import { createEngineerAgent } from "@/ai/agents/engineer/index.ts";
+import { createMarketingAgent } from "@/ai/agents/marketing/index.ts";
 
-export interface AgentTeam {
-  supervisor: SupervisorAgent;
-  research: ResearchAgent;
-  productManager: ProductManagerAgent;
-  finance: FinanceAgent;
-  engineer: EngineerAgent;
-  marketing: MarketingAgent;
-}
+export type { AgentDeps, AgentNode, SupervisorNode, AgentTeam } from "@/ai/agents/base/types.ts";
+export { agentLog, agentThink, agentToolCall } from "@/ai/agents/base/helpers.ts";
 
-/** Construct the full agent team with the injected LLM provider. */
+/** Wire all agents with the shared LLM dependency. Each agent is just `{ name, run }`. */
 export function createAgentTeam(llm: LlmProvider): AgentTeam {
+  const deps: AgentDeps = { llm };
   return {
-    supervisor: new SupervisorAgent(llm),
-    research: new ResearchAgent(llm),
-    productManager: new ProductManagerAgent(llm),
-    finance: new FinanceAgent(llm),
-    engineer: new EngineerAgent(llm),
-    marketing: new MarketingAgent(llm),
+    supervisor: createSupervisorAgent(deps),
+    research: createResearchAgent(deps),
+    productManager: createProductManagerAgent(deps),
+    finance: createFinanceAgent(deps),
+    engineer: createEngineerAgent(deps),
+    marketing: createMarketingAgent(deps),
   };
 }
 
 export {
-  SupervisorAgent,
-  ResearchAgent,
-  ProductManagerAgent,
-  FinanceAgent,
-  EngineerAgent,
-  MarketingAgent,
+  createSupervisorAgent,
+  createResearchAgent,
+  createProductManagerAgent,
+  createFinanceAgent,
+  createEngineerAgent,
+  createMarketingAgent,
 };

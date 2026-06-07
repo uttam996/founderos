@@ -1,18 +1,17 @@
-import { BaseAgent } from "@/ai/agents/base/agent.ts";
+import type { AgentDeps, AgentNode } from "@/ai/agents/base/types.ts";
+import { agentLog, agentThink, agentToolCall } from "@/ai/agents/base/helpers.ts";
 import type { GraphStateType, GraphUpdate } from "@/ai/graph/state.ts";
 import { FinanceOutputSchema, type FinanceOutput } from "@/ai/schemas.ts";
 import { revenueModelTool, ideaLabel } from "@/ai/tools/index.ts";
 
-/**
- * Finance agent: pricing strategy, revenue projections, cost analysis and
- * break-even estimation. Uses the revenue-model tool to compute projections.
- */
-export class FinanceAgent extends BaseAgent {
-  readonly name = "finance";
+/** Finance: pricing strategy, revenue projections, break-even. */
+export function createFinanceAgent(deps: AgentDeps): AgentNode {
+  const { llm } = deps;
+  const name = "finance";
 
-  async run(state: GraphStateType): Promise<GraphUpdate> {
+  async function run(state: GraphStateType): Promise<GraphUpdate> {
     const label = ideaLabel(state.idea);
-    await this.toolCall("revenue_model_generator");
+    await agentToolCall(name, "revenue_model_generator");
 
     const model = await revenueModelTool.invoke({
       idea: state.idea,
@@ -23,9 +22,9 @@ export class FinanceAgent extends BaseAgent {
       fixedMonthlyCost: 9000,
     });
 
-    await this.log(`Projected break-even at month ${model.breakEvenMonths}.`);
+    await agentLog(name, `Projected break-even at month ${model.breakEvenMonths}.`);
 
-    const output = await this.think<FinanceOutput>({
+    const output = await agentThink<FinanceOutput>(llm, {
       schema: FinanceOutputSchema,
       schemaName: "FinanceOutput",
       temperature: 0.3,
@@ -62,7 +61,9 @@ export class FinanceAgent extends BaseAgent {
       }),
     });
 
-    await this.log("Pricing strategy and financial model complete.");
+    await agentLog(name, "Pricing strategy and financial model complete.");
     return { pricing: output.pricing, financials: output.financials };
   }
+
+  return { name, run };
 }
