@@ -1,0 +1,21 @@
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: founderos-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: founderos
+      POSTGRES_PASSWORD: founderos
+      POSTGRES_DB: founderos
+    ports:
+      - "5432:5432"
+    volumes:
+      - founderos_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U founderos -d founderos"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  founderos_pgdata:

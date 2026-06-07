@@ -1,0 +1,12 @@
+node_modules/
+dist/
+build/
+.env
+.env.local
+runtime-settings.json
+*.log
+.DS_Store
+bun.lockb
+coverage/
+.vite/
+.turbo/

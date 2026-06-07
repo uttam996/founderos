@@ -1,0 +1,30 @@
+{
+  "name": "@founderos/backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch run src/main.ts",
+    "start": "bun run src/main.ts",
+    "build": "bun build src/main.ts --target bun --outdir dist",
+    "migrate": "bun run src/shared/db/migrate.ts",
+    "seed": "bun run src/shared/db/seed.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hono/zod-validator": "^0.4.2",
+    "@langchain/core": "^0.3.40",
+    "@langchain/google-genai": "^0.1.8",
+    "@langchain/langgraph": "^0.2.44",
+    "@langchain/openai": "0.3.17",
+    "@octokit/rest": "^22.0.1",
+    "hono": "^4.7.2",
+    "langchain": "^0.3.15",
+    "postgres": "^3.4.5",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.0",
+    "typescript": "^5.7.3"
+  }
+}
